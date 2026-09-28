@@ -1,0 +1,80 @@
+name: Daily sitemap
+
+on:
+  schedule:
+    # every day at 03:00 UTC
+    - cron: "0 3 * * *"
+  workflow_dispatch: # allow manual runs from the Actions tab
+
+permissions:
+  contents: write
+
+env:
+  OUTPUT_BRANCH: output
+  OUTPUT_DIR: output
+  TEMP_DIR: /tmp/temp-output
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Generate sitemap
+        run: |
+          npm install
+          npm run generate
+        env:
+          BASE_URL: "http://103.225.94.27/Infobase/"
+
+      - name: Publish to output branch
+        run: |
+          set -euo pipefail
+
+          git config user.name "4ubox"
+          git config user.email "go4bigbox@gmail.com"
+
+          # Save generated files before switching branches
+          rm -rf ${TEMP_DIR}
+          mkdir -p ${TEMP_DIR}
+          cp -r ${OUTPUT_DIR} ${TEMP_DIR}/
+          ls -halF ${TEMP_DIR}/
+
+          BRANCH="${OUTPUT_BRANCH}"
+
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$BRANCH"
+
+            # Remove local generated directory so checkout is not blocked
+            rm -rf ${OUTPUT_DIR}
+
+            git switch -C "$BRANCH" "origin/$BRANCH"
+          else
+            git switch --orphan "$BRANCH"
+          fi
+
+          # Remove everything from the output branch
+          rm -rf . 2>/dev/null || true
+          git rm -rf . 2>/dev/null || true
+
+          # Put ONLY the generated files at the branch root
+          cp -rf ${TEMP_DIR}/${OUTPUT_DIR} .
+
+          # Stage everything
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes to publish."
+            exit 0
+          fi
+
+          git commit -m "sitemap: daily update $(date -u +%Y-%m-%d)"
+          git push origin "$BRANCH"

@@ -1,0 +1,13 @@
+{
+  "name": "sitemap-infobase",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "BASE_URL=http://103.225.94.27/Infobase/ nodemon src/generate.js -e js",
+    "generate": "BASE_URL=http://103.225.94.27/Infobase/ node src/generate.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "he": "^1.2.0"
+  }
+}
